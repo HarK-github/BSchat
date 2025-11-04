@@ -91,7 +91,7 @@ export default function Nav() {
 
   return (
     <MetaMaskProvider debug={false} sdkOptions={sdkOptions}>
-      <Navbar>
+      <Navbar className="z-10000">
         <NavbarBrand>
           <p className="font-bold text-inherit">BSChat</p>
         </NavbarBrand>

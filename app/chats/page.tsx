@@ -1,7 +1,7 @@
 "use client";
 
-import { Input, Button, ScrollShadow, Avatar } from "@heroui/react";
-import { useState, useEffect } from "react";
+import { Input, Button, ScrollShadow, Avatar, Spinner } from "@heroui/react";
+import { useState, useEffect, useRef } from "react";
 import io from "socket.io-client";
 
 interface Chat {
@@ -19,13 +19,12 @@ interface Message {
   createdAt?: string;
 }
 
-const socket = io("http://localhost:4000"); // your backend URL
+const socket = io("http://localhost:4000"); // Backend
 
-const chatoverall = "bg-[#040711]";
-const chatselected = "#0E1127";
-const chatborder = "#151726";
+const chatBg = "bg-[#0b0214]";
+const chatBorder = "border-[#3a0ca3]";
+const chatAccent = "black";
 
-// 🧩 Sidebar Item
 function ChatListItem({
   name,
   lastMessage,
@@ -36,31 +35,39 @@ function ChatListItem({
   return (
     <div
       onClick={onClick}
-      className={`flex justify-between items-center p-3 cursor-pointer transition-colors ${
-        selected ? "":""
+      className={`p-3 cursor-pointer transition-all rounded-xl ${
+        selected
+          ? "bg-gradient-to-r from-purple-600/40 to-pink-500/40 text-white"
+          : "hover:bg-purple-900/20"
       }`}
     >
-      <div className="flex flex-col">
-        <span className="font-semibold">{name}</span>
-        <span className="text-sm text-default-500 truncate w-40">
-          {lastMessage}
-        </span>
+      <div className="flex justify-between items-center">
+        <div className="flex flex-col">
+          <span className="font-semibold">{name}</span>
+          <span className="text-sm text-gray-400 truncate w-40">
+            {lastMessage}
+          </span>
+        </div>
+        <span className="text-xs text-gray-500">{time}</span>
       </div>
-      <span className="text-xs text-default-400">{time}</span>
     </div>
   );
 }
 
-// 🧩 Single message bubble
-function ChatMessage({ sender, text }: Message) {
+function ChatMessage({ sender, text, username }: Message) {
   const isMine = sender === "me";
   return (
-    <div className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
+    <div className={`flex flex-col ${isMine ? "items-end" : "items-start"}`}>
+      {!isMine && (
+        <span className="text-xs text-purple-400 font-medium mb-1">
+          {username}
+        </span>
+      )}
       <div
-        className={`px-3 py-2 rounded-2xl max-w-[70%] shadow-sm ${
+        className={`px-4 py-2 rounded-2xl max-w-[75%] shadow-md ${
           isMine
-            ? "bg-primary text-primary-foreground rounded-br-none"
-            : "bg-default-200 text-foreground rounded-bl-none"
+            ? "bg-gradient-to-r from-purple-700 to-pink-600 text-white rounded-br-none"
+            : "bg-purple-900/40 text-gray-100 rounded-bl-none"
         }`}
       >
         {text}
@@ -69,47 +76,73 @@ function ChatMessage({ sender, text }: Message) {
   );
 }
 
-// 🧩 Chat window
 function ChatWindow({
   groupName,
   messages,
   onSend,
+  typingUser,
 }: {
   groupName: string;
   messages: Message[];
   onSend: (text: string) => void;
+  typingUser: string | null;
 }) {
   const [input, setInput] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSend = () => {
     if (input.trim()) {
       onSend(input.trim());
       setInput("");
+      socket.emit("stop typing");
     }
   };
 
+  const handleTyping = (value: string) => {
+    setInput(value);
+    socket.emit(value ? "typing" : "stop typing");
+  };
+
   return (
-    <section className={`flex-1 flex flex-col  ${chatoverall}`}>
-      <header className={`border-b-2 ${chatborder} py-4 font-semibold flex items-center gap-2`}>
+    <section
+      className={`flex-1 flex flex-col ${chatBg} rounded-r-3xl border-l-2 ${chatBorder}`}
+    >
+      <header className="border-b border-purple-800/50 py-4 px-6 flex items-center gap-2 bg-purple-950/20">
         <Avatar name={groupName} size="sm" />
-        {groupName}
+        <span className="font-semibold text-white text-lg">{groupName}</span>
       </header>
 
-      <ScrollShadow className="flex-1 px-4 py-3 space-y-3" size={100}>
+      <ScrollShadow className="flex-1 px-6 py-4 space-y-4 overflow-y-auto">
         {messages.map((m, i) => (
           <ChatMessage key={m._id || i} {...m} />
         ))}
+
+          <div className="text-sm text-purple-400 italic flex items-center gap-2">
+            <Spinner size="sm" color="secondary" /> {typingUser} is typing...
+          </div>
+        
       </ScrollShadow>
 
-      <div className={`p-3 m-4 border rounded-3xl ${chatborder} flex items-center gap-2`}>
+      <div
+        className={`p-3 m-4 border rounded-full flex items-center gap-3 ${chatBorder} bg-purple-900/30`}
+      >
         <Input
+          ref={inputRef}
           fullWidth
-          placeholder="Type a message"
+          placeholder="Type a message..."
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => handleTyping(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
+          radius="full"
+          className="text-white"
         />
-        <Button isIconOnly color="primary" radius="full" onClick={handleSend}>
+        <Button
+          isIconOnly
+          color="secondary"
+          radius="full"
+          onClick={handleSend}
+          className="bg-gradient-to-r from-purple-700 to-pink-600"
+        >
           ➤
         </Button>
       </div>
@@ -117,7 +150,6 @@ function ChatWindow({
   );
 }
 
-// 🧩 Sidebar
 function ChatSidebar({
   groups,
   selectedId,
@@ -128,19 +160,20 @@ function ChatSidebar({
   setSelectedId: (id: number) => void;
 }) {
   return (
-    <aside className={`-1/4 rounded-b-xs flex flex-col ${chatoverall} border-r-2 border-[ch]`}>
-       
-      <div className="p-3 border-b-2 border-[ch]">
+    <aside
+      className={`w-1/4 flex flex-col rounded-l-3xl border-r-2 ${chatBorder} ${chatBg}`}
+    >
+      <div className="p-4 border-b border-purple-800/40">
         <Input
-                  variant="bordered"
-                  radius="full"
-                    className={`${chatoverall}`}
-                  placeholder="Search or start new chat"
+          variant="bordered"
+          radius="full"
+          placeholder="Search or start new chat"
+          className="text-white"
         />
-        </div>
+      </div>
 
-      <ScrollShadow className={`flex-1 ${chatoverall}`}>
-        <div className="divide-y">
+      <ScrollShadow className="flex-1 p-2">
+        <div className="space-y-1">
           {groups.map((g) => (
             <ChatListItem
               key={g.id}
@@ -155,41 +188,37 @@ function ChatSidebar({
   );
 }
 
-// 🧩 Main Chat App
 export default function ChatApp() {
   const groups: Chat[] = [
-    { id: 1, name: "General", lastMessage: "Chat started", time: "Now" },
+    { id: 1, name: "General", lastMessage: "Welcome!", time: "Now" },
   ];
 
   const [selectedId, setSelectedId] = useState(1);
   const [messages, setMessages] = useState<Message[]>([]);
   const [username, setUsername] = useState("");
   const [name, setName] = useState("");
+  const [typingUser, setTypingUser] = useState<string | null>(null);
 
-  // Load saved username from localStorage
   useEffect(() => {
     const stored = localStorage.getItem("username");
     if (stored) setName(stored);
   }, []);
 
-  // Fetch past messages from backend
   useEffect(() => {
     if (!name) return;
-
     fetch("http://localhost:4000/messages")
       .then((res) => res.json())
-      .then((data) => {
+      .then((data) =>
         setMessages(
           data.map((msg: any) => ({
             ...msg,
             sender: msg.username === name ? "me" : "other",
           }))
-        );
-      })
+        )
+      )
       .catch(console.error);
   }, [name]);
 
-  // Listen for real-time messages
   useEffect(() => {
     if (!name) return;
 
@@ -200,49 +229,76 @@ export default function ChatApp() {
       ]);
     };
 
+    const handleTyping = (data: string) => setTypingUser(data);
+    const handleStopTyping = () => setTypingUser(null);
+
     socket.on("chat message", handleMessage);
-    return () => socket.off("chat message", handleMessage);
+    socket.on("typing", handleTyping);
+    socket.on("stop typing", handleStopTyping);
+
+    return () => {
+      socket.off("chat message", handleMessage);
+      socket.off("typing", handleTyping);
+      socket.off("stop typing", handleStopTyping);
+    };
   }, [name]);
 
-  // Handle sending a message
   const handleSend = (text: string) => {
     if (!name) return;
     socket.emit("chat message", { username: name, text });
   };
 
-  // Handle entering username
   const handleEnter = () => {
     if (username.trim()) {
       setName(username.trim());
       localStorage.setItem("username", username.trim());
+      socket.emit("join", username.trim());
     }
   };
 
   return (
-    <main className="h-screen flex bg-background ">
-      <ChatSidebar
-        groups={groups}
-        selectedId={selectedId}
-        setSelectedId={setSelectedId}
-      />
-
-      {!name ? (
-        <div className="flex flex-col items-center justify-center m-auto gap-2">
-          <Input
-            placeholder="Enter your name"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="max-w-xs"
-          />
-          <Button onClick={handleEnter}>Enter Chat</Button>
-        </div>
-      ) : (
-        <ChatWindow
-          groupName={groups.find((g) => g.id === selectedId)?.name || ""}
-          messages={messages}
-          onSend={handleSend}
+    <main
+      className={`h-screen flex items-center justify-center bg-gradient-to-br ${chatAccent} p-4`}
+    >
+      <div
+        className={`flex overflow-hidden w-full max-w-6xl h-[85vh] rounded-3xl shadow-2xl border-2 ${chatBorder}`}
+      >
+        <ChatSidebar
+          groups={groups}
+          selectedId={selectedId}
+          setSelectedId={setSelectedId}
         />
-      )}
+
+        {!name ? (
+          <div className="flex flex-col items-center justify-center m-auto gap-3 bg-purple-950/30 rounded-2xl p-8 border border-purple-800/50">
+            <h2 className="text-xl text-purple-200 font-semibold mb-2">
+              Enter your name to join the chat
+            </h2>
+            <Input
+              placeholder="Your name"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              radius="full"
+              className="max-w-xs text-white"
+            />
+            <Button
+              onClick={handleEnter}
+              color="secondary"
+              radius="full"
+              className="bg-gradient-to-r from-purple-700 to-pink-600 text-white"
+            >
+              Join Chat
+            </Button>
+          </div>
+        ) : (
+          <ChatWindow
+            groupName={groups.find((g) => g.id === selectedId)?.name || ""}
+            messages={messages}
+            onSend={handleSend}
+            typingUser={typingUser}
+          />
+        )}
+      </div>
     </main>
   );
 }

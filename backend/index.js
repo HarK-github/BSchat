@@ -29,6 +29,7 @@ const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] },
 }); 
 
+
 io.on('connection', (socket) => {
   console.log('🟢 user connected', socket.id);
 
@@ -38,11 +39,18 @@ io.on('connection', (socket) => {
     io.emit('chat message', msg);
   });
 
+  socket.on('typing', (username) => {
+    socket.broadcast.emit('typing', username);
+  });
+
+  socket.on('stop typing', () => {
+    socket.broadcast.emit('stop typing');
+  });
+
   socket.on('disconnect', () => {
     console.log('🔴 user disconnected', socket.id);
   });
 });
-
 // --- REST route for old messages ---
 app.get('/messages', async (req, res) => {
   const msgs = await Message.find().sort({ createdAt: 1 }).limit(100);
@@ -52,3 +60,4 @@ app.get('/messages', async (req, res) => {
 // --- Start Server ---
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+

@@ -37,7 +37,21 @@ html {
     opacity: 1;
   }
 }
-
+.autoBLur{
+    animation: autoBLurAnimation linear both;
+    animation-timeline: view();
+}
+@keyframes autoBLurAnimation{
+    0%{
+        filter: blur(40px);
+    }
+    45%, 55%{
+        filter: blur(0px);
+    }
+    100%{
+        filter: blur(40px);
+    }
+}
 .sll {  
   /* This section calls the slideInFromLeft animation we defined above */
   animation: 1s ease-out 0s 1 slideInFromLeft;
@@ -49,4 +63,70 @@ html {
 .sltr{
     animation: 1s ease-out 0s 1 slideInFromRight;
 
+}
+ 
+.fade-bot::before {
+  content: "";
+
+  position: absolute;
+  bottom: -80px;
+  left: 0;
+  width: 100%;
+  height: 150px; /* adjust height of fade */
+  background: linear-gradient(to top, rgb(0, 0, 0), transparent);
+  pointer-events: none;
+  z-index: 200000;
+}
+.autoShowl{
+    animation: autoShowAnimationl both;
+    animation-timeline: view(70% 5%);
+}
+
+.autoShowr{
+    animation: autoShowAnimationr both;
+    animation-timeline: view(70% 5%);
+}
+@keyframes autoShowAnimationl {
+  from {
+    opacity: 0;
+    transform: translateX(-40%); /* was -100% */
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes autoShowAnimationr {
+  from {
+    opacity: 0;
+    transform: translateX(40%); /* was +100% */
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.hero{
+   background-image: radial-gradient(
+    circle at center,
+    rgb(96, 96, 96) 0.01rem,
+    transparent 0
+  );
+  background-size: 1rem 1rem;
+  background-repeat: round;
+  background-color: black;
+  
+  z-index: 1000000000000000000;
+}
+
+.circle-text {
+    font-size: 100px;
+    font-weight: 900;
+    text-transform: uppercase;
+    background: radial-gradient(circle at center, #ff0077, #7700ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
 }
